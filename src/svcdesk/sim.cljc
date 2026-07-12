@@ -1,0 +1,142 @@
+(ns svcdesk.sim
+  "Demo runner: push twelve representative operations through one
+  OperationActor and watch the ServiceGovernor + approval workflow earn
+  the SupportOps-LLM the right to transition a support case's status,
+  publish a knowledge-base article, disclose account/case data, or
+  resolve a dispute.
+
+    op1  クリーンな status 遷移(case-100 :new → :in-progress, 出典あり)         → commit
+    op2  出典なし status 遷移                                                  → source-provenance REJECT → hold
+    op3  SLA entitlement を超える応答時間コミット(case-300, acct-basic, 4時間)    → sla-tier REJECT → hold
+    op4  status をスキップした遷移(case-200 :in-progress → :closed 直接)         → case-status-sequence REJECT → hold
+    op5  開示クエリが tier/basic 契約なのに assigned-agent-id 等まで要求          → hold
+    op5a 開示クエリが未契約 account から                                        → hold
+    op6  エンバーゴ済み KB 記事の公開提案(常に人間レビュー)                       → escalate → approve → commit
+    op7  case への異議申立て(どの phase でも常に人間レビュー)                     → escalate → approve → commit
+    op8  返金/クレジットを示唆する case コミットメント(常に人間レビュー)          → escalate → approve → commit
+    op9  case-200 を正当な手順で closed へ(2段階): in-progress→resolved         → commit
+    op9b                                          resolved→closed              → commit
+    op10 既に closed 済みの case への再遷移提案                                  → double-close REJECT → hold
+
+  Run: clojure -M:dev:run"
+  (:require [langgraph.graph :as g]
+            [svcdesk.store :as store]
+            [svcdesk.operation :as op]
+            [svcdesk.facts :as facts]
+            [svcdesk.report :as report]))
+
+(defn- line [& xs] (println (apply str xs)))
+
+(defn- run-op!
+  [actor thread-id request context approve?]
+  (let [res (g/run* actor {:request request :context context} {:thread-id thread-id})]
+    (if (= :interrupted (:status res))
+      (do (line "   ⏸  人間レビュー待ち (reason: "
+                (-> res :state :audit last :reason) ")")
+          (let [res2 (g/run* actor
+                             {:approval {:status (if approve? :approved :rejected)
+                                         :by "manager-1"}}
+                             {:thread-id thread-id :resume? true})]
+            (line "   ▶  " (if approve? "承認 → " "却下 → ") "disposition = "
+                  (get-in res2 [:state :disposition]))
+            res2))
+      (do (line "   → disposition = " (get-in res [:state :disposition])
+                "  (confidence " (get-in res [:state :verdict :confidence]) ")")
+          res))))
+
+(defn -main [& _]
+  (let [db      (store/seed-db)
+        actor   (op/build db)
+        agent   {:actor-id "agent-1" :actor-role :agent :phase 3}
+        manager {:actor-id "mg-1" :actor-role :support-manager :phase 3}]
+
+    (line "── R0 カバレッジ(正直な現状) ──")
+    (line (pr-str (facts/coverage)))
+
+    (line "\n── OperationActor (SupportOps-LLM sealed; ServiceGovernor active) ──")
+
+    (line "\nop1  クリーンな status 遷移: case-100 :new → :in-progress")
+    (run-op! actor "op1"
+             {:op :case/transition-status :subject "case-100" :case-id "case-100"
+              :to-status :in-progress :agent-id "agent-100" :committed-response-hours 48
+              :source {:class :case-management-log :ref "op1"}}
+             agent true)
+
+    (line "\nop2  出典なし status 遷移: case-100 :in-progress → :resolved")
+    (run-op! actor "op2"
+             {:op :case/transition-status :subject "case-100" :case-id "case-100"
+              :to-status :resolved :agent-id "agent-100"
+              :source {:class :case-management-log :ref "op2"} :unsourced? true}
+             agent true)
+
+    (line "\nop3  SLA entitlement を超える応答時間コミット: case-300(acct-basic, :tier/basic) に4時間を約束")
+    (run-op! actor "op3"
+             {:op :case/transition-status :subject "case-300" :case-id "case-300"
+              :to-status :resolved :agent-id "agent-200" :committed-response-hours 4
+              :source {:class :case-management-log :ref "op3"}}
+             agent true)
+
+    (line "\nop4  status をスキップした遷移: case-200 :in-progress → :closed(直接)")
+    (run-op! actor "op4"
+             {:op :case/transition-status :subject "case-200" :case-id "case-200"
+              :to-status :closed :agent-id "agent-100"
+              :source {:class :case-management-log :ref "op4"}}
+             agent true)
+
+    (line "\nop5  開示クエリ(tier/basic 契約なのに assigned-agent-id/committed-response-hours まで要求)")
+    (run-op! actor "op5"
+             {:op :disclosure/query :subject "acct-basic" :account-id "acct-basic" :greedy? true}
+             {:actor-id "sub-1" :actor-role :account-holder :account-id "acct-basic" :phase 3} true)
+
+    (line "\nop5a 開示クエリ(登録されていない account から)")
+    (run-op! actor "op5a"
+             {:op :disclosure/query :subject "acct-ghost" :account-id "acct-ghost"}
+             {:actor-id "sub-2" :actor-role :account-holder :account-id "acct-ghost" :phase 3} true)
+
+    (line "\nop6  エンバーゴ済み KB 記事の公開提案: kb-200(常に人間レビュー)")
+    (run-op! actor "op6"
+             {:op :kb/publish-article :subject "kb-200" :article-id "kb-200"}
+             manager true)
+
+    (line "\nop7  case への異議申立て(どの phase でも常に人間レビュー)")
+    (run-op! actor "op7"
+             {:op :dispute/request :subject "case-100" :disputed-field :status :claim :new}
+             manager true)
+
+    (line "\nop8  返金/クレジットを示唆する case コミットメント(常に人間レビュー)")
+    (run-op! actor "op8"
+             {:op :case/transition-status :subject "case-300" :case-id "case-300"
+              :to-status :resolved :agent-id "agent-200" :committed-response-hours 48
+              :implies-refund-credit? true
+              :source {:class :customer-inbound-message :ref "op8"}}
+             manager true)
+
+    (line "\nop9  case-200 を正当な手順で closed へ(1/2): :in-progress → :resolved")
+    (run-op! actor "op9"
+             {:op :case/transition-status :subject "case-200" :case-id "case-200"
+              :to-status :resolved :agent-id "agent-100" :committed-response-hours 12
+              :source {:class :case-management-log :ref "op9"}}
+             agent true)
+
+    (line "\nop9b case-200 を正当な手順で closed へ(2/2): :resolved → :closed")
+    (run-op! actor "op9b"
+             {:op :case/transition-status :subject "case-200" :case-id "case-200"
+              :to-status :closed :agent-id "agent-100"
+              :source {:class :case-management-log :ref "op9b"}}
+             agent true)
+
+    (line "\nop10 既に closed 済みの case への再遷移提案: case-200(op9b で closed 済み) → :cancelled")
+    (run-op! actor "op10"
+             {:op :case/transition-status :subject "case-200" :case-id "case-200"
+              :to-status :cancelled :agent-id "agent-100"
+              :source {:class :case-management-log :ref "op10"}}
+             agent true)
+
+    (line "\n── 開示(governor が承認した tier/pro 列のみ) ──")
+    (line (pr-str (report/render-case db "case-200" [:id :account-id :status :assigned-agent-id])))
+
+    (line "\n── 監査台帳 (append-only; 誰が・何を・どの出典で遷移/公開/開示したか) ──")
+    (doseq [f (store/ledger db)]
+      (line "  " (store/ledger-line f)))
+
+    (line "\ndone.")))

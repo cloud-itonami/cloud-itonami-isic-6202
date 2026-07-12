@@ -1,0 +1,58 @@
+(ns svcdesk.llm-test
+  (:require [clojure.test :refer [deftest is]]
+            [svcdesk.store :as store]
+            [svcdesk.llm :as llm]))
+
+(deftest transition-proposal-carries-source-and-cites
+  (let [db (store/seed-db)
+        p (llm/infer db {:op :case/transition-status :subject "case-100"
+                         :case-id "case-100" :to-status :in-progress
+                         :agent-id "agent-100"
+                         :source {:class :case-management-log :ref "demo"}})]
+    (is (= :case-status-upsert (:effect p)))
+    (is (= {:class :case-management-log :ref "demo"} (:source p)))
+    (is (>= (:confidence p) 0.9))))
+
+(deftest unsourced-transition-proposal-carries-nil-source
+  (let [db (store/seed-db)
+        p (llm/infer db {:op :case/transition-status :subject "case-100"
+                         :case-id "case-100" :to-status :in-progress
+                         :agent-id "agent-100"
+                         :source {:class :case-management-log :ref "demo"}
+                         :unsourced? true})]
+    (is (nil? (:source p)))
+    (is (>= (:confidence p) 0.85) "still high-confidence — proves source-provenance cannot rely on confidence")))
+
+(deftest closed-status-marks-closed?-true
+  (let [db (store/seed-db)
+        p (llm/infer db {:op :case/transition-status :subject "case-300"
+                         :case-id "case-300" :to-status :closed
+                         :agent-id "agent-200"
+                         :source {:class :case-management-log :ref "demo"}})]
+    (is (true? (get-in p [:value :closed?])))))
+
+(deftest cancelled-status-marks-closed?-true
+  (let [db (store/seed-db)
+        p (llm/infer db {:op :case/transition-status :subject "case-300"
+                         :case-id "case-300" :to-status :cancelled
+                         :agent-id "agent-200"
+                         :source {:class :case-management-log :ref "demo"}})]
+    (is (true? (get-in p [:value :closed?])))))
+
+(deftest disclosure-proposal-greedy-adds-extra-columns
+  (let [db (store/seed-db)
+        clean (llm/infer db {:op :disclosure/query :subject "acct-acme" :account-id "acct-acme"})
+        greedy (llm/infer db {:op :disclosure/query :subject "acct-acme" :account-id "acct-acme" :greedy? true})]
+    (is (< (count (:columns clean)) (count (:columns greedy))))))
+
+(deftest kb-publish-proposal-carries-article-id
+  (let [db (store/seed-db)
+        p (llm/infer db {:op :kb/publish-article :subject "kb-200" :article-id "kb-200"})]
+    (is (= :kb-article-publish (:effect p)))
+    (is (= "kb-200" (get-in p [:value :article-id])))))
+
+(deftest dispute-proposal-never-marks-high-confidence
+  (let [db (store/seed-db)
+        p (llm/infer db {:op :dispute/request :subject "case-100" :disputed-field :status :claim :new})]
+    (is (= :correction-apply (:effect p)))
+    (is (< (:confidence p) 0.9))))
