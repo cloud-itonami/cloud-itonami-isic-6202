@@ -1,0 +1,135 @@
+(ns svcdesk.http-test
+  "Exercises `svcdesk.http` as a REAL running process — starts the actual
+  http-kit server on an ephemeral port inside the test JVM and makes
+  REAL HTTP requests against it with `java.net.http` (JDK built-in, zero
+  extra test dependency). No mocked handler, no in-process Ring
+  `handler` invocation shortcut.
+
+  Scenarios reuse the exact governed cases `svcdesk.sim` already
+  exercises (op1: clean case-status transition -> commit; op3: SLA-
+  entitlement-exceeded response-time commitment -> hard hold) rather than
+  inventing new ones."
+  (:require [clojure.test :refer [deftest is testing use-fixtures]]
+            [clojure.data.json :as json]
+            [org.httpkit.server :as httpkit]
+            [svcdesk.http :as http]
+            [svcdesk.store :as store])
+  (:import (java.net URI)
+           (java.net.http HttpClient HttpRequest HttpRequest$BodyPublishers HttpResponse$BodyHandlers)))
+
+;; Test-only token, set explicitly for this process — never a real
+;; secret, never committed anywhere as a default/fallback in svcdesk.http
+;; itself (svcdesk.http has NO built-in token; this is the value THIS
+;; test happens to pass to `start-server!`).
+(def ^:private test-token "http-test-only-token-9f3a7c2e")
+
+(def ^:private client (HttpClient/newHttpClient))
+
+(def ^:private ^:dynamic *base-url* nil)
+(def ^:private server (atom nil))
+
+(defn- with-server [f]
+  (let [srv (http/start-server! {:store (store/seed-db) :port 0 :token test-token})]
+    (reset! server srv)
+    (try
+      (binding [*base-url* (str "http://127.0.0.1:" (httpkit/server-port srv))]
+        (f))
+      (finally
+        @(httpkit/server-stop! srv)
+        (reset! server nil)))))
+
+(use-fixtures :once with-server)
+
+;; ───────────────────────── HTTP helpers ─────────────────────────
+
+(defn- req!
+  [method path {:keys [body headers]}]
+  (let [b (HttpRequest/newBuilder (URI/create (str *base-url* path)))]
+    (doseq [[k v] headers] (.header b k v))
+    (case method
+      :get  (.GET b)
+      :post (do (.header b "Content-Type" "application/json")
+                (.POST b (HttpRequest$BodyPublishers/ofString (or body "")))))
+    (let [resp (.send client (.build b) (HttpResponse$BodyHandlers/ofString))]
+      {:status (.statusCode resp)
+       :body   (.body resp)})))
+
+(defn- json-req!
+  ([method path opts] (json-req! method path opts nil))
+  ([method path opts token]
+   (let [headers (cond-> (:headers opts {})
+                   token (assoc "Authorization" (str "Bearer " token)))
+         resp (req! method path (assoc opts :headers headers))]
+     (assoc resp :json (when (seq (:body resp))
+                          (try (json/read-str (:body resp) :key-fn keyword)
+                               (catch Exception _ ::unparseable)))))))
+
+;; ───────────────────────── /health, / ─────────────────────────
+
+(deftest health-check-no-auth-required
+  (let [{:keys [status json]} (json-req! :get "/health" {})]
+    (is (= 200 status))
+    (is (= "ok" (:status json)))))
+
+(deftest root-info-no-auth-required
+  (let [{:keys [status json]} (json-req! :get "/" {})]
+    (is (= 200 status))
+    (is (= "cloud-itonami-isic-6202" (:actor json)))
+    (is (= "6202" (:isic-code json)))))
+
+;; ───────────────────────── /propose ─────────────────────────
+
+(def ^:private op1-body
+  (json/write-str
+   {:op "case/transition-status" :subject "case-100" :case-id "case-100"
+    :to-status "in-progress" :agent-id "agent-100" :committed-response-hours 48
+    :source {:class "case-management-log" :ref "op1"}
+    :context {:actor-id "agent-1" :actor-role "agent" :phase 3}}))
+
+(def ^:private op3-body
+  (json/write-str
+   {:op "case/transition-status" :subject "case-300" :case-id "case-300"
+    :to-status "resolved" :agent-id "agent-200" :committed-response-hours 4
+    :source {:class "case-management-log" :ref "op3"}
+    :context {:actor-id "agent-1" :actor-role "agent" :phase 3}}))
+
+(deftest propose-without-auth-token-is-unauthorized
+  (let [{:keys [status json]} (json-req! :post "/propose" {:body op1-body})]
+    (is (= 401 status))
+    (is (= "unauthorized" (:error json)))))
+
+;; Regression coverage for the constant-time token comparison
+;; (`svcdesk.http/constant-time-string=`, ADR-2607124600): a naive
+;; `=`-based rewrite bug (e.g. comparing lengths and short-circuiting, or
+;; dropping the byte-array conversion) would most plausibly surface as
+;; one of these two behavioral cases going wrong, so both are asserted
+;; explicitly rather than just re-testing the already-covered "no
+;; token" and "correct token" paths above. This is a behavioral
+;; assertion (still rejected -> 401), NOT a timing measurement.
+(deftest propose-with-wrong-length-token-is-unauthorized
+  (let [wrong-length-token (str test-token "-extra-suffix")
+        {:keys [status json]} (json-req! :post "/propose" {:body op1-body} wrong-length-token)]
+    (is (= 401 status))
+    (is (= "unauthorized" (:error json)))))
+
+(deftest propose-with-same-length-wrong-token-is-unauthorized
+  (let [same-length-wrong-token (str (subs test-token 0 (dec (count test-token))) "X")]
+    (is (= (count test-token) (count same-length-wrong-token)))
+    (let [{:keys [status json]} (json-req! :post "/propose" {:body op1-body} same-length-wrong-token)]
+      (is (= 401 status))
+      (is (= "unauthorized" (:error json))))))
+
+(deftest propose-with-valid-token-and-clean-transition-commits
+  (testing "op1 from svcdesk.sim: case-100 :new -> :in-progress, acct-acme (:tier/pro) entitled to 48h, sourced -> commit"
+    (let [{:keys [status json]} (json-req! :post "/propose" {:body op1-body} test-token)]
+      (is (= 200 status))
+      (is (= "committed" (:decision json)))
+      (is (= "case/transition-status" (:op json)))
+      (is (= "case-100" (:subject json))))))
+
+(deftest propose-with-sla-entitlement-exceeded-is-held-with-violations
+  (testing "op3 from svcdesk.sim: case-300 on acct-basic (:tier/basic, min 48h) commits a 4h response -> sla-tier-gate REJECT"
+    (let [{:keys [status json]} (json-req! :post "/propose" {:body op3-body} test-token)]
+      (is (= 200 status))
+      (is (= "held" (:decision json)))
+      (is (some #(= "sla-tier-gate" (:rule %)) (:violations json))))))

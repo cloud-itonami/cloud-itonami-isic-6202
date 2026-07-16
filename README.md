@@ -74,6 +74,101 @@ clojure -M:dev:test
 clojure -M:dev:run
 ```
 
+## Running as a service
+
+`src/svcdesk/http.clj` wraps this actor in a minimal, real HTTP service
+(http-kit) — a governed, bearer-token-authenticated `POST /propose` +
+`GET /health`/`GET /` — so it can actually run as a live process instead
+of only being invoked as a library. **Auth is fail-closed**: the server
+refuses to start at all without an explicit token.
+
+```bash
+ISIC6202_API_TOKEN=<your-token> clojure -M:serve   # port: $ISIC6202_HTTP_PORT, default 8080
+# optional: ISIC6202_STORE_FILE=/path/to/db.edn -- disk-durable store (see docs/api.md's Persistence section)
+```
+
+**Persistence**: without `$ISIC6202_STORE_FILE`, `-main` runs against an
+ephemeral in-memory store and prints a stderr WARNING — all state is
+lost on restart. Set `ISIC6202_STORE_FILE` to a path to run against
+`svcdesk.file-store/FileStore` instead, a disk-durable store. See
+**[`docs/api.md`](docs/api.md)**'s Persistence section for the full
+explanation, including why `svcdesk.store/DatomicStore` — despite its
+name — is *not* wired in as a durable option (it is an in-process EAV
+atom with no connection URI, exactly as ephemeral as the default store).
+
+See **[`docs/api.md`](docs/api.md)** for the full endpoint reference
+(request/response shapes, auth header, error codes, curl examples) and
+its explicit honest-scope statement — this is a real network endpoint,
+not yet production-hardened (single-process/single-tenant, no TLS
+termination built in, no rate limiting, no book-wide aggregate view).
+
+### Running via Docker
+
+The `Dockerfile` is a multi-stage build: a builder stage (JDK + Clojure
+CLI) clones this repo's `:local/root` sibling deps
+(`kotoba-lang/{crm,langgraph,langchain}` — public repos; no uberjar/
+`tools.build` alias exists in this repo, so the builder just resolves
+the same classpath `clojure -M:dev:serve` would use) and records it to
+a file; the runtime stage is a minimal `eclipse-temurin:21-jre-alpine`
+image that replays that classpath with a plain `java` invocation as a
+non-root user — no Clojure CLI, build tool, or network access needed to
+run the container. All secrets/config
+(`ISIC6202_API_TOKEN`/`ISIC6202_STORE_FILE`/`ISIC6202_MODEL_API_KEY`
+etc.) are read from the container's environment only, never baked into
+the image; `ISIC6202_API_TOKEN` has no default, matching `svcdesk.http`'s
+own fail-closed contract. A `HEALTHCHECK` polls `GET /health`.
+
+```bash
+docker build -t cloud-itonami-isic-6202 .
+
+mkdir -p /tmp/isic6202-store
+docker run -d --name isic6202 \
+  -p 18080:8080 \
+  -e ISIC6202_API_TOKEN=test-token-abc123 \
+  -e ISIC6202_STORE_FILE=/data/db.edn \
+  -v /tmp/isic6202-store:/data \
+  cloud-itonami-isic-6202
+
+curl -s http://localhost:18080/health
+# {"status":"ok","store":"reachable"}
+
+docker stop isic6202 && docker rm isic6202
+```
+
+`ISIC6202_STORE_FILE` is bind-mounted so `svcdesk.file-store` snapshots
+survive container restarts (see "Persistence" above) —
+`/tmp/isic6202-store/db.edn` is written on the host after the first
+request.
+
+**Not included on purpose**: no `docker push`/registry step and no
+cloud-deploy automation — CI (`.github/workflows/ci.yml`) only runs
+`docker build .` as a build-breakage smoke test. Pushing to a registry
+and deploying need registry credentials and a target-infrastructure
+decision that are out of scope here.
+
+### Real-model SupportOps-LLM advisor (optional)
+
+By default the SupportOps-LLM advisor (`svcdesk.llm`) is a SEALED,
+deterministic mock — no real language model is ever called.
+`src/svcdesk/llm_realmodel.clj` adds a real OpenAI-compatible/Anthropic
+HTTP adapter, wired in via `svcdesk.http/resolve-advisor!`: set
+`ISIC6202_MODEL_API_KEY` and the server uses it instead of the mock
+(unset/blank = unchanged sealed-mock default).
+
+```bash
+ISIC6202_API_TOKEN=<token> ISIC6202_MODEL_API_KEY=<real key> clojure -M:serve
+# optional: ISIC6202_MODEL_PROVIDER=openai|anthropic|openclaw (default openai)
+# optional: ISIC6202_MODEL_URL (required for openclaw), ISIC6202_MODEL
+```
+
+**Honest caveat**: this adapter's real-call behavior against an actual
+model API has never been exercised in this build (no credentials are
+available in the environment it was built in) — it is verified only
+against `preflight`'s reporting logic and a local `org.httpkit.server`
+stub standing in for the model API. See **[`docs/api.md`](docs/api.md)**'s
+"Real-model SupportOps-LLM advisor" section for exactly what is/isn't
+proven.
+
 ## Documentation
 
 - `docs/business-model.md` — the OSS open-business blueprint
