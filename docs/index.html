@@ -39,11 +39,12 @@
 <body>
   <main class="container">
     <h1>cloud-itonami-isic-6202</h1>
-    <div class="badge">ISIC 6202 · maturity unknown</div>
+    <div class="badge">ISIC 6202 · Governed SaaS Blueprint</div>
     <div class="pitch">
-      <p>Open Business Blueprint for ISIC Rev.4 6202: computer consultancy and computer facilities management activities, narrowed to a CRM/ subscription-integrated customer-service-hub SaaS platform business — the HubSpot Service Hub/Salesforce Service Cloud class of business — published as an OSS business that any qualified operator can fork, deploy, run, improve and sell.</p>
-      <p>Support cases move through a governed lifecycle and get their SLA response-time commitments checked against the account's paying subscription tier before anything commits. Built on this workspace's [langgraph](https://github.com/kotoba-lang/langgraph) StateGraph runtime and [kotoba-lang/crm](https://github.com/kotoba-lang/crm)'s technical commons — the same actor pattern as [cloud-itonami-isic-5820](https://github.com/cloud-itonami/cloud-itonami-isic-5820) (this actor's direct sibling, which names this build in its own sibling-actor roadmap) and [cloud-itonami-isic-6209](https://github.com/cloud-itonami/cloud-itonami-isic-6209) (a distinct sibling — IT-helpdesk ticket routing with no CRM/ subscription linkage at all; see docs/business-model.md for the differentiation).</p>
-      <p>&gt; Why an actor layer at all? A SupportOps-LLM is great at &gt; normalizing incoming case activity and drafting status-transition &gt; proposals — but it has no notion of SLA-entitlement scope, &gt; case-lifecycle sequence validity, embargoed-content risk, or a &gt; subscriber's disclosure entitlement. Letting it commit directly &gt; invites a response-time promise faster than the account's plan &gt; entitles, a case status being skipped or reopened after close, an &gt; embargoed knowledge-base article being auto-published, or a &gt; refund/credit-implying commitment slipping through unreviewed. This &gt; project seals the SupportOps-LLM into a single node and wraps it with &gt; an independent ServiceGovernor, a human review workflow, and &gt; an immutable audit ledger.</p>
+      <p><strong>The problem:</strong> AI-powered support automation can normalize cases and draft status changes—but without guardrails, it commits faster response-times than an account's plan entitles, skips valid case-lifecycle steps, or auto-publishes embargoed knowledge without review.</p>
+      <p><strong>The answer:</strong> An independent <strong>ServiceGovernor</strong> holds every unsafe commit. It audits SLA entitlement, case-sequence validity, and refund risk before the LLM draft ever persists. All decisions become immutable, auditable records.</p>
+      <p><strong>What this is:</strong> OSS governance layer for a customer-service-hub SaaS platform (the HubSpot Service Hub / Salesforce Service Cloud class). Fork, deploy, run, improve, and sell—published under AGPL-3.0.</p>
+      <p><strong>What this is not:</strong> Sales-pipeline governance, IT-ticket routing, marketing automation, or AI-magic (it is plain actor-model state machines and ledger).</p>
     </div>
     <p class="meta">Domain <code>operations</code> · Governor <code>governor</code> · License <code>AGPL-3.0-or-later</code></p>
     <div class="cta">

@@ -2,6 +2,10 @@
 
 Shortest path from clone to a verified local dry-run for **ISIC 6202** (`cloud-itonami-isic-6202`).
 
+## Who this is for
+
+**Operators, architects, and engineers** evaluating or deploying a governed customer-service-hub SaaS platform: fork this blueprint, integrate your subscription/billing backend, wire in your LLM provider, and run a SupportOps actor with built-in SLA enforcement and audit guarantees. No invented metrics; this is governance infrastructure, not a hosted demo.
+
 ## Prerequisites
 
 - Clojure 1.12+ (`clojure --version`)
