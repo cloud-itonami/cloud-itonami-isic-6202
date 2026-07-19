@@ -1,0 +1,131 @@
+(ns svcdesk.render-html
+  "Build-time HTML renderer for `docs/samples/operator-console.html`.
+
+  Closes flagship checklist item 2 (ADR-2607189300 at com-junkawasaki/root)
+  for cloud-itonami-isic-6202: the wave5 fleet demo-generation sweep covers
+  the 290-repo {facts,phase,sim,governor,operation,advisor,store} cluster
+  but 6202 has an http.clj layer (different shape), so its demo was deferred
+  -- this namespace is the build-time render entrypoint.
+
+  Runs the SAME governed service-desk scenario `svcdesk.sim` exercises
+  (op1 clean case transition -> commit; op3 SLA-entitlement exceeded ->
+  hard hold; op7 dispute -> escalate -> human-approve -> commit) through
+  the REAL actor (svcdesk.operation -> svcdesk.policy governor ->
+  svcdesk.store), then renders case-status counts + the cases table.
+
+  No invented numbers, no timestamps -- byte-identical reruns against the
+  same fresh seed, so regeneration commits only when the actor's real
+  behavior changes (the same discipline isic-2910 + isic-5820 establish).
+
+  Usage: `clojure -M:dev:render-html [out-file]`
+  (default `docs/samples/operator-console.html`)."
+  (:require [clojure.string :as str]
+            [svcdesk.store :as store]
+            [svcdesk.operation :as operation]
+            [langgraph.graph :as g]))
+
+(def ^:private agent-ctx {:actor-id "agent-1" :actor-role :agent :phase 3})
+(def ^:private mgr-ctx   {:actor-id "mg-1" :actor-role :support-manager :phase 3})
+
+(defn- exec! [actor tid request ctx]
+  (g/run* actor {:request request :context ctx} {:thread-id tid}))
+
+(defn- approve! [actor tid]
+  (g/run* actor {:approval {:status :approved :by "manager-1"}}
+          {:thread-id tid :resume? true}))
+
+(defn run-demo!
+  "Runs a fresh seeded store through the governed scenario: case-100 advances
+  :new->:in-progress with a 48h response commitment (commit); case-300 HARD-
+  holds at :resolved on a 4h commitment that violates acct-basic's SLA
+  entitlement (sla-tier-gate, never reaches a human); case-100 then has its
+  status disputed and the dispute is human-approved (escalate->resume->commit).
+  Returns the resulting store -- every field below is real governor/store
+  output, not a hand copy."
+  []
+  (let [db (store/seed-db)
+        actor (operation/build db)]
+    (exec! actor "op1" {:op :case/transition-status :subject "case-100"
+                        :case-id "case-100" :to-status :in-progress
+                        :agent-id "agent-100" :committed-response-hours 48
+                        :source {:class :case-management-log :ref "op1"}}
+           agent-ctx)
+    (exec! actor "op3" {:op :case/transition-status :subject "case-300"
+                        :case-id "case-300" :to-status :resolved
+                        :agent-id "agent-200" :committed-response-hours 4
+                        :source {:class :case-management-log :ref "op3"}}
+           agent-ctx)
+    (let [r7 (exec! actor "op7" {:op :dispute/request :subject "case-100"
+                                 :disputed-field :status :claim :new}
+                    mgr-ctx)]
+      (when (= :interrupted (:status r7))
+        (approve! actor "op7")))
+    db))
+
+(defn- status-counts [db]
+  (->> (store/all-cases db)
+       (group-by :status)
+       (into {})
+       (sort-by (fn [[s _]] [(get {:new 0 :in-progress 1 :resolved 2 :closed 3} s 9) (name s)]))
+       (map (fn [[s cs]] [(name s) (count cs)]))))
+
+(defn- status-count-rows [db]
+  (str/join "\n"
+            (for [[s n] (status-counts db)]
+              (format "        <tr><td>%s</td><td class=\"num\">%d</td></tr>" s n))))
+
+(defn- case-rows [db]
+  (str/join "\n"
+            (for [c (sort-by :id (store/all-cases db))]
+              (format "        <tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td class=\"num\">%s</td><td>%s</td></tr>"
+                      (:id c)
+                      (:account-id c)
+                      (name (:status c))
+                      (or (:assigned-agent-id c) "—")
+                      (or (:committed-response-hours c) "—")
+                      (if (:closed? c) "closed" "open")))))
+
+(defn render-html
+  "Renders the post-scenario case-status counts + cases table as a
+  deterministic HTML document (no timestamps). Byte-identical across reruns."
+  [db]
+  (let [cases (store/all-cases db)
+        agents (count (store/all-agents db))]
+    (format
+      (str "<!doctype html>\n<html lang=\"en\"><head><meta charset=\"utf-8\">\n"
+           "<meta name=\"generator\" content=\"svcdesk.render-html (clojure -M:dev:render-html)\">\n"
+           "<title>cloud-itonami-isic-6202 — operator console (build-time generated)</title>\n"
+           "<style>body{font-family:system-ui,sans-serif;margin:2rem;max-width:900px}"
+           "h1{font-size:1.4rem}h2{font-size:1.1rem;margin-top:1.5rem}"
+           "table{border-collapse:collapse}td,th{border:1px solid #ccc;padding:4px 8px;text-align:left}"
+           ".num{text-align:right}.note{color:#666;font-size:0.85rem}</style></head><body>\n"
+           "<h1>cloud-itonami-isic-6202 — service-desk operator console</h1>\n"
+           "<p class=\"note\">Build-time generated by <code>svcdesk.render-html</code> "
+           "(<code>clojure -M:dev:render-html</code>) running the governed op1/op3/op7 "
+           "scenario through the real <code>svcdesk.operation</code>→<code>svcdesk.policy</code>→"
+           "<code>svcdesk.store</code> stack. Not a hand-pasted snapshot; regenerates "
+           "byte-identically. %d cases · %d agents.</p>\n\n"
+           "<h2>Case status — counts</h2>\n<table><tr><th>status</th><th>cases</th></tr>\n%s\n</table>\n\n"
+           "<h2>Cases</h2>\n<table><tr><th>id</th><th>account</th><th>status</th><th>agent</th><th>resp hrs</th><th>state</th></tr>\n%s\n</table>\n"
+           "</body></html>\n")
+      (count cases) agents
+      (status-count-rows db)
+      (case-rows db))))
+
+(defn -main
+  "Runs the demo scenario + writes the rendered HTML to `out-file`
+  (default docs/samples/operator-console.html). Commit-only-on-change."
+  [& [out-file]]
+  (let [out (or out-file "docs/samples/operator-console.html")
+        db (run-demo!)
+        html (render-html db)
+        tmp (str out ".tmp")]
+    (clojure.java.io/make-parents out)
+    (spit tmp html)
+    (let [prev (try (slurp out) (catch Exception _ nil))]
+      (if (= prev html)
+        (println (str "unchanged: " out))
+        (do (clojure.java.io/copy (clojure.java.io/file tmp)
+                                  (clojure.java.io/file out))
+            (println (str "wrote: " out)))))
+    (clojure.java.io/delete-file tmp :silently)))
