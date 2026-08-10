@@ -88,6 +88,65 @@ ledger — the same discipline `cloud-itonami-isic-5820` and
 - Certification/audit fee for itonami.cloud operator certification
 - Optional managed-hosting fee for operators who do not self-host
 
+| Package | Customer | Price shape |
+|---|---|---|
+| Self-host | operator runs their own instance | AGPL-3.0-or-later, no fee |
+| Managed Starter | one tenant, SaaS vendor's own support desk (~10 agents) | ¥40,000/月 flat |
+
+**Market-anchored (2026-08-10)**: benchmarked against 5 real
+customer-service-hub products. **Only 3 of the 5 publish real numbers, and
+all three are non-Japanese.** **Zendesk Suite**: 「$55 エージェント/月（年払
+い）」 (Team), 「$115 エージェント/月（年払い）」 (Professional); Enterprise is
+not published and routes to sales (<https://www.zendesk.co.jp/pricing/>).
+**HubSpot Service Hub**: Starter「最低利用料金：￥840／月／シート」,
+Professional「￥10,800／月／シート」, Enterprise「￥18,000／月／シート」
+(<https://www.hubspot.jp/pricing/service>). **Freshdesk**: Growth
+`$19/agent/month, billed annually`, Pro `$55/agent/month`, Enterprise
+`$89/agent/month` (<https://www.freshworks.com/freshdesk/pricing/>). The two
+Japanese products **publish nothing usable**: **メールディーラー**'s pricing
+route carries no figures and redirects to a price-inquiry form
+(<https://www.maildealer.jp/plan/>), and **Re:lation** publishes plan
+structure and seat/storage allowances (フリー 1名/100MB、スターター 1名/10GB、
+ビジネス 5名/20GB、プロ 10名/30GB、エンタープライズ 個別) but no yen figures,
+stating「※月額費用はご利用のユーザ数やストレージによって変わります」
+(<https://ingage.jp/relation/pricing/>). Third-party aggregator figures for
+those two exist but are **not first-party and are therefore not used as an
+anchor here**.
+
+Converting at ~¥150/$ for the assumed customer (one tenant, a SaaS vendor's
+own support desk at ~10 agent seats), the published band is ¥28,500/月
+(Freshdesk Growth ×10) to ¥172,500/月 (Zendesk Suite Professional ×10), with
+Zendesk Team and Freshdesk Pro both landing at ¥82,500/月 and HubSpot Service
+Professional at ¥108,000/月. **¥40,000/月 sits near the bottom of that
+measured band**, about 1.4× the floor and well under half of Zendesk Team,
+because this actor ships no ticketing UI, no omnichannel or live chat, no
+agent-transfer routing, no CSAT engine and no billing logic — it is the
+SLA-entitlement, case-status-sequence, KB-embargo and refund-risk **gate**
+that sits on top of whatever desk the vendor already runs.
+
+**The flat shape is itself the argument, not a packaging convenience.** Every
+one of the three disclosing comparators charges per agent seat. The
+ServiceGovernor's work does not scale with agent headcount — it scales with
+case volume, because the governor evaluates cases, not people. Charging per
+seat would therefore decouple price from the quantity of work actually
+performed in both directions: a ten-agent desk handling few cases would
+overpay, and a three-agent desk handling many would underpay for the same
+governance load. A flat monthly tenant fee keeps price aligned with what the
+governor actually does. The one property no comparator has structurally is
+the reason the fee is non-zero next to a ¥28,500 full desk: an agent cannot
+promise a response time faster than the account's subscription tier has
+actually provisioned, because the check is an independent governor rather
+than a configurable-but-optional workflow rule.
+
+**Subscribe (2026-08-10)**: a live Stripe Payment Link for the Managed
+Starter tier (¥40,000/月 flat) is available now —
+[**subscribe to Managed Service Desk Ops — Starter**](https://buy.stripe.com/4gMfZieuX9xu4ze2DEeEo0g).
+This is a no-code Stripe-hosted checkout; nothing in this repo's actor code
+changed. After subscribing, contact gftdcojp to arrange managed-tenant setup
+(manual fulfillment today, no automated onboarding yet). **No SaaS vendor or
+service business has claimed or subscribed to this tier yet — this is a live,
+working checkout with zero paid tenants, not a claim of existing revenue.**
+
 ## Honest scope (R0)
 
 - Support-case lifecycle (4-status linear + 1 exit) and SLA-entitlement
