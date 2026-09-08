@@ -69,7 +69,7 @@
   request shape). An operator who supplies real credentials via
   `ISIC6202_MODEL_API_KEY` gets a genuinely wired adapter, but its real-call
   behavior remains unverified until they do."
-  (:require [clojure.string :as str]
+  (:require [kotoba.lang.text :as str]
             [clojure.data.json :as json]
             [langchain.model :as model]
             [svcdesk.llm :as llm])

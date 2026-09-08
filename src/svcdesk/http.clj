@@ -53,7 +53,7 @@
   prints which mode it picked (and `svcdesk.llm-realmodel/preflight`'s
   config, minus the key value) at server start, the same fail-visible
   discipline `warn-ephemeral-store!` already established for storage."
-  (:require [clojure.string :as str]
+  (:require [kotoba.lang.text :as str]
             [clojure.data.json :as json]
             [org.httpkit.server :as httpkit]
             [ring.middleware.params :refer [wrap-params]]
