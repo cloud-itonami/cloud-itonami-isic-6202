@@ -4,7 +4,7 @@ This is the first HTTP service layer over the `cloud-itonami-isic-6202`
 actor. It is a **thin adapter**: it does not reimplement any governance
 logic. Every governed decision is produced by the exact same
 `svcdesk.operation`/`svcdesk.policy` code the library entry points
-(`clojure -M:dev:run`, the test suite) already use.
+(`kbb -M:dev:run`, the test suite) already use.
 
 ## Honest scope (read this first)
 
@@ -56,7 +56,7 @@ The token is whatever value the server was started with — see
 
 - `svcdesk.http/start-server!` throws (refuses to start) if given a
   nil/blank token.
-- `clojure -M:serve` (`svcdesk.http/-main`) reads `$ISIC6202_API_TOKEN` at
+- `kbb -M:serve` (`svcdesk.http/-main`) reads `$ISIC6202_API_TOKEN` at
   startup; if it is unset or blank, it prints a fatal error to stderr
   and exits `1` **without starting the server at all**. There is no
   "runs with auth disabled" fallback anywhere in this code.
@@ -73,7 +73,7 @@ you must supply one.
 ## Running the server
 
 ```bash
-ISIC6202_API_TOKEN=<your-token> clojure -M:serve
+ISIC6202_API_TOKEN=<your-token> kbb -M:serve
 # optional: ISIC6202_HTTP_PORT=9000 (default 8080)
 # optional: ISIC6202_STORE_FILE=/path/to/db.edn  -- see "Persistence" below
 ```
@@ -333,7 +333,7 @@ ISIC6202_API_TOKEN=<token> \
 ISIC6202_MODEL_API_KEY=<real key> \
 ISIC6202_MODEL_PROVIDER=openai \
 ISIC6202_MODEL=gpt-4o-mini \
-  clojure -M:serve
+  kbb -M:serve
 ```
 
 ### Startup log / `preflight`

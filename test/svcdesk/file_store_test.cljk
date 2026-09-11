@@ -8,7 +8,7 @@
 
   This test does NOT itself kill and restart an OS process — it proves
   the snapshot-to-disk/load-from-disk logic is correct, not that a real
-  `clojure -M:serve` process survives a real restart (see sibling actors'
+  `kbb -M:serve` process survives a real restart (see sibling actors'
   `crm.file-store`/`marketing.file-store` commit history for that manual
   end-to-end transcript; it is not automated here because spawning a JVM
   subprocess per test run is slow and this file's job is fast regression

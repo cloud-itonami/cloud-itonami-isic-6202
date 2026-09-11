@@ -133,9 +133,9 @@ SOFT gate 3つ: `kb-embargo-gate`(この fleet で新規の check kind —
 
 ## Verification Notes
 
-- `clojure -M:dev:test` — 33 tests, 110 assertions, 0 failures, 0 errors
+- `kbb -M:dev:test` — 33 tests, 110 assertions, 0 failures, 0 errors
   (`test/svcdesk/{facts,llm,phase,policy-contract,store-contract}_test.clj`)
-- `clojure -M:lint`(clj-kondo, `--fail-level error`) — 0 errors, 0 warnings
-- `clojure -M:dev:run` — 12-operation demo confirms all 6 HARD gates and
+- `kbb -M:lint`(clj-kondo, `--fail-level error`) — 0 errors, 0 warnings
+- `kbb -M:dev:run` — 12-operation demo confirms all 6 HARD gates and
   3 SOFT/always-escalate gates fire as designed, plus MemStore/
   DatomicStore parity via the shared `Store` protocol.

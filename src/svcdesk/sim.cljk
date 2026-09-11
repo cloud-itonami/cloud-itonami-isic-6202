@@ -18,7 +18,7 @@
     op9b                                          resolved→closed              → commit
     op10 既に closed 済みの case への再遷移提案                                  → double-close REJECT → hold
 
-  Run: clojure -M:dev:run"
+  Run: kbb -M:dev:run"
   (:require [langgraph.graph :as g]
             [svcdesk.store :as store]
             [svcdesk.operation :as op]
