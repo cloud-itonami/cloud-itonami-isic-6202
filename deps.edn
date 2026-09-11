@@ -22,11 +22,11 @@ io.github.kotoba-lang/langgraph
         {io.github.kotoba-lang/langchain
          {:local/root "../../kotoba-lang/langchain"}}}
   :run {:main-opts ["-m" "svcdesk.sim"]}
-  ;; clojure -M:serve → starts the real HTTP service (src/svcdesk/http.cljk).
+  ;; kbb -M:serve → starts the real HTTP service (src/svcdesk/http.cljk).
   ;; Port: $ISIC6202_HTTP_PORT (default 8080). Auth: $ISIC6202_API_TOKEN
   ;; MUST be set (fail-closed — see docs/api.md).
   :serve {:main-opts ["-m" "svcdesk.http"]}
-  ;; clojure -M:dev:render-html → build-time regenerate docs/samples/
+  ;; kbb -M:dev:render-html → build-time regenerate docs/samples/
   ;; operator-console.html through the real service-desk actor
   ;; (svcdesk.render-html). Closes flagship checklist item 2 (ADR-2607189300).
   :render-html {:main-opts ["-m" "svcdesk.render-html"]}

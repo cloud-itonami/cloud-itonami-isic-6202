@@ -5,8 +5,8 @@
 ```bash
 git clone https://github.com/cloud-itonami/cloud-itonami-isic-6202
 cd cloud-itonami-isic-6202
-clojure -M:dev:test
-clojure -M:dev:run
+kbb -M:dev:test
+kbb -M:dev:run
 ```
 
 ## 2. Production Checklist
@@ -17,7 +17,7 @@ clojure -M:dev:run
 - configure the LLM adapter through environment variables or secret manager
 - define SLA/subscription tiers per account and RBAC rules for agents/
   support managers/account-holders
-- run `clojure -M:dev:test` / `clojure -M:lint`
+- run `kbb -M:dev:test` / `kbb -M:lint`
 - verify audit-ledger export
 - document backup/restore and incident response
 - get written support/legal review on which response-time commitments
