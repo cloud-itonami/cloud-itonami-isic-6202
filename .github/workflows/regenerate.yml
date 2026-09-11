@@ -5,7 +5,7 @@
 # flagship checklist item 2 (ADR-2607189300 at com-junkawasaki/root) for
 # cloud-itonami-isic-6202: the wave5 fleet demo-generation sweep covers the
 # 290-repo cluster but 6202 has an http.clj layer (different shape), so its
-# demo was deferred -- this workflow + src/svcdesk/render_html.clj are that
+# demo was deferred -- this workflow + src/svcdesk/render_html.cljk are that
 # entrypoint.
 #
 # JVM Clojure (clojure -M:dev:render-html), not nbb -- svcdesk.* + its

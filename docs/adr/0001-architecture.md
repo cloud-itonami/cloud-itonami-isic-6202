@@ -93,7 +93,7 @@ SOFT gate 3つ: `kb-embargo-gate`(この fleet で新規の check kind —
   `cloud-itonami-isic-5820`が意図した「sibling actor が同じ pipeline
   ロジックを再導出しない」という設計方針が実証された(2件目の consumer)。
 - (+) `MemStore` ‖ `DatomicStore` parity は
-  `test/svcdesk/store_contract_test.clj` で証明。
+  `test/svcdesk/store_contract_test.cljk` で証明。
 - (-) R0 は3 SLA/subscription tier・4-status 線形ライフサイクルのみ
   (ブランチ/並行 status は対象外)。
 - (-) SLA governance は単一の応答時間コミットメント check のみ

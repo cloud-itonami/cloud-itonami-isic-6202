@@ -76,7 +76,7 @@ clojure -M:dev:run
 
 ## Running as a service
 
-`src/svcdesk/http.clj` wraps this actor in a minimal, real HTTP service
+`src/svcdesk/http.cljk` wraps this actor in a minimal, real HTTP service
 (http-kit) — a governed, bearer-token-authenticated `POST /propose` +
 `GET /health`/`GET /` — so it can actually run as a live process instead
 of only being invoked as a library. **Auth is fail-closed**: the server
@@ -150,7 +150,7 @@ decision that are out of scope here.
 
 By default the SupportOps-LLM advisor (`svcdesk.llm`) is a SEALED,
 deterministic mock — no real language model is ever called.
-`src/svcdesk/llm_realmodel.clj` adds a real OpenAI-compatible/Anthropic
+`src/svcdesk/llm_realmodel.cljk` adds a real OpenAI-compatible/Anthropic
 HTTP adapter, wired in via `svcdesk.http/resolve-advisor!`: set
 `ISIC6202_MODEL_API_KEY` and the server uses it instead of the mock
 (unset/blank = unchanged sealed-mock default).
