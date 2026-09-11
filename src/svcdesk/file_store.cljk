@@ -4,7 +4,7 @@
   that file on construction. State survives a process restart — the same
   contract `cloud-itonami-isic-5820`'s `crm.file-store` and
   `cloud-itonami-isic-6201`'s `marketing.file-store` already established
-  for this actor lineage (`test/svcdesk/file_store_test.clj` covers the
+  for this actor lineage (`test/svcdesk/file_store_test.cljk` covers the
   same contract at the Store level, in-process, for fast regression
   coverage — mirroring those sibling suites).
 
@@ -24,7 +24,7 @@
   `(atom {:db ... :log []})`; there is no connection URI, no socket, no
   file, nothing that outlives the JVM heap. It is Datomic-API-*shaped*
   (via `langchain.db`, a pure in-process EAV emulation — see that ns's
-  docstring), not Datomic-*backed*. `test/svcdesk/store_contract_test.clj`
+  docstring), not Datomic-*backed*. `test/svcdesk/store_contract_test.cljk`
   proves `MemStore` and `DatomicStore` are read/write-equivalent, which is
   true and valuable for a future backend swap — but neither one persists
   past the process, so picking `DatomicStore` for `-main` would not have

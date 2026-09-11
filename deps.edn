@@ -11,7 +11,7 @@ io.github.kotoba-lang/langgraph
         {:local/root "../../kotoba-lang/langgraph"}
         io.github.kotoba-lang/crm
         {:local/root "../../kotoba-lang/crm"}
-        ;; HTTP service layer (src/svcdesk/http.clj, JVM-only compat glue —
+        ;; HTTP service layer (src/svcdesk/http.cljk, JVM-only compat glue —
         ;; see its ns docstring for why this is not a .cljc violation).
         ;; Same versions as cloud-itonami-isic-5820's src/crm/http.clj.
         http-kit/http-kit        {:mvn/version "2.8.1"}
@@ -22,7 +22,7 @@ io.github.kotoba-lang/langgraph
         {io.github.kotoba-lang/langchain
          {:local/root "../../kotoba-lang/langchain"}}}
   :run {:main-opts ["-m" "svcdesk.sim"]}
-  ;; clojure -M:serve → starts the real HTTP service (src/svcdesk/http.clj).
+  ;; clojure -M:serve → starts the real HTTP service (src/svcdesk/http.cljk).
   ;; Port: $ISIC6202_HTTP_PORT (default 8080). Auth: $ISIC6202_API_TOKEN
   ;; MUST be set (fail-closed — see docs/api.md).
   :serve {:main-opts ["-m" "svcdesk.http"]}

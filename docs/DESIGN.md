@@ -22,7 +22,7 @@ TicketGovernor)の写像だが、CRM/subscription 連携という異なる業務
 | エンバーゴ済み KB 記事を自動公開 | 未発表情報の外部漏洩 |
 | 返金/クレジットを示唆するコミットメントを自動承認 | 財務上の無権限コミットメント |
 
-## 2. OperationActor(`src/svcdesk/operation.cljc`)
+## 2. OperationActor(`src/svcdesk/operation.cljk`)
 
 ```
 intake → advise → govern → decide ─┬─ commit
@@ -30,7 +30,7 @@ intake → advise → govern → decide ─┬─ commit
                                    └─ hold
 ```
 
-## 3. ServiceGovernor(`src/svcdesk/policy.cljc`)
+## 3. ServiceGovernor(`src/svcdesk/policy.cljk`)
 
 優先順位(HARD は人間承認でも上書き不可):
 
@@ -51,18 +51,18 @@ intake → advise → govern → decide ─┬─ commit
    コミットメントは常に人間承認へ
 10. dispute-request(SOFT、無条件)
 
-## 4. SSoT(`src/svcdesk/store.cljc`)
+## 4. SSoT(`src/svcdesk/store.cljk`)
 
 agents(name のみ)・accounts(subscription-tier/active?)・cases
 (status/assigned-agent/committed-response-hours/closed?)・kb-articles
 (title/status/embargoed?)・append-only ledger。
 
-## 5. R0(`src/svcdesk/facts.cljc`)
+## 5. R0(`src/svcdesk/facts.cljk`)
 
 出典クラス3種 + 3段階 SLA/subscription tier + 4-status 線形 case
 ライフサイクル(+1 exit status)。
 
-## 6. Phase 0→3(`src/svcdesk/phase.cljc`)
+## 6. Phase 0→3(`src/svcdesk/phase.cljk`)
 
 `default-phase` = 1(保守的)。`dispute/request` はどの phase の `:auto`
 にも入らない。`kb/publish-article` は phase 3 の `:auto` に入るが、

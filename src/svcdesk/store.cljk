@@ -10,7 +10,7 @@
                        kotoba-server pod.
 
   Both implement the same protocol and pass the same contract
-  (test/svcdesk/store_contract_test.clj) — the actor, the
+  (test/svcdesk/store_contract_test.cljk) — the actor, the
   ServiceGovernor and the audit ledger never know which SSoT they run on.
 
   Entity shapes: an agent (name only — R0 does not model per-agent
