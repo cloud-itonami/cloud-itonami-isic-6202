@@ -1,5 +1,5 @@
 (ns svcdesk.facts-test
-  (:require [clojure.test :refer [deftest is]]
+  (:require [kotoba.test :refer [deftest is]]
             [svcdesk.facts :as facts]))
 
 (deftest class-allowed?-rejects-unlisted-classes

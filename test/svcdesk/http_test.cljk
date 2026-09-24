@@ -9,7 +9,7 @@
   exercises (op1: clean case-status transition -> commit; op3: SLA-
   entitlement-exceeded response-time commitment -> hard hold) rather than
   inventing new ones."
-  (:require [clojure.test :refer [deftest is testing use-fixtures]]
+  (:require [kotoba.test :refer [deftest is testing use-fixtures]]
             [clojure.data.json :as json]
             [org.httpkit.server :as httpkit]
             [svcdesk.http :as http]
