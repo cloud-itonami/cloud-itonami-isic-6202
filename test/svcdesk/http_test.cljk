@@ -10,7 +10,7 @@
   entitlement-exceeded response-time commitment -> hard hold) rather than
   inventing new ones."
   (:require [kotoba.test :refer [deftest is testing use-fixtures]]
-            [clojure.data.json :as json]
+            [kotoba.json :as json]
             [org.httpkit.server :as httpkit]
             [svcdesk.http :as http]
             [svcdesk.store :as store])

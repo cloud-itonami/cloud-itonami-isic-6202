@@ -60,7 +60,7 @@
                                       SLA-breach-imminent/high-stakes
                                       gate).
    10. dispute-request              — never auto-resolves, any phase."
-  (:require [clojure.set :as set]
+  (:require [kotoba.lang.coll :as set]
             [svcdesk.facts :as facts]
             [svcdesk.store :as store]))
 
