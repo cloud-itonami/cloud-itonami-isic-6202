@@ -2,7 +2,7 @@
   "The governor contract as executable tests. Single invariant under
   test: SupportOps-LLM never transitions/publishes/discloses/resolves a
   record the ServiceGovernor would reject."
-  (:require [clojure.test :refer [deftest is testing]]
+  (:require [kotoba.test :refer [deftest is testing]]
             [langgraph.graph :as g]
             [svcdesk.store :as store]
             [svcdesk.operation :as op]))

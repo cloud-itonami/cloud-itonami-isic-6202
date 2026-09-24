@@ -1,5 +1,5 @@
 (ns svcdesk.llm-test
-  (:require [clojure.test :refer [deftest is]]
+  (:require [kotoba.test :refer [deftest is]]
             [svcdesk.store :as store]
             [svcdesk.llm :as llm]))
 
